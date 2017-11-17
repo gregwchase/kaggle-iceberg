@@ -75,13 +75,13 @@ fc2 = mx.sym.FullyConnected(data=relu3, num_hidden=2)
 lenet = mx.sym.SoftmaxOutput(data=fc2, name='softmax')
 
 
-model = mx.mod.Module(symbol=lenet, context=mx.cpu())
+model = mx.mod.Module(symbol=lenet, context=mx.gpu(0))
 
 # Train Model
 
 print("Creating MXNet NDArrayIter objets")
 batch_size = 50
-n_epochs = 5
+n_epochs = 20
 train_iter = mx.io.NDArrayIter(X_train, y_train, batch_size, shuffle=True)
 val_iter = mx.io.NDArrayIter(X_valid, y_valid, batch_size)
 
@@ -93,6 +93,6 @@ model.fit(train_iter, eval_data = val_iter, optimizer='adam',
             eval_metric='acc',
             # batch_end_callback = [mx.callback.Speedometer(batch_size, 100), progress_bar],
             batch_end_callback = mx.callback.Speedometer(batch_size, 100),
-            num_epoch=5)
+            num_epoch=n_epochs)
 
 print("Seconds:", (time.time() - start))
