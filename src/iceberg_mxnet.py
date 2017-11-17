@@ -1,11 +1,11 @@
 import pandas as pd
 import numpy as np
 import mxnet as mx
-# import tensorflow as tf
 from sklearn.model_selection import train_test_split
 import time
 import logging
 from keras.utils import normalize
+
 logging.getLogger().setLevel(logging.DEBUG)
 
 def load_and_format_data(file_path):
@@ -74,25 +74,42 @@ fc2 = mx.sym.FullyConnected(data=relu3, num_hidden=2)
 # Softmax Loss
 lenet = mx.sym.SoftmaxOutput(data=fc2, name='softmax')
 
+'''
+Line 81: GPU context (for AWS)
+Line 82: CPU context (for local, CPU training)
+'''
+# model = mx.mod.Module(symbol=lenet, context=mx.gpu(0))
+model = mx.mod.Module(symbol=lenet, context=mx.cpu())
 
-model = mx.mod.Module(symbol=lenet, context=mx.gpu(0))
 
 # Train Model
 
 print("Creating MXNet NDArrayIter objets")
 batch_size = 50
-n_epochs = 20
+n_epochs = 10
 train_iter = mx.io.NDArrayIter(X_train, y_train, batch_size, shuffle=True)
 val_iter = mx.io.NDArrayIter(X_valid, y_valid, batch_size)
 
 
 print("Training Model")
-# progress_bar = mx.callback.ProgressBar(total=5)
 model.fit(train_iter, eval_data = val_iter, optimizer='adam',
             optimizer_params={'learning_rate': 0.01},
             eval_metric='acc',
-            # batch_end_callback = [mx.callback.Speedometer(batch_size, 100), progress_bar],
             batch_end_callback = mx.callback.Speedometer(batch_size, 100),
             num_epoch=n_epochs)
+
+test_images = test_images.reshape(test_images.shape[0], 2, 75, 75)
+test_iter = mx.io.NDArrayIter(test_images, None, batch_size)
+
+# Predict against the test data
+predictions = model.predict(test_iter)
+predictions = predictions[:,1] # Column indicating probability of an iceberg
+predictions = predictions.asnumpy()
+predictions = predictions.reshape(-1,1)
+
+# Write output to CSV for submission
+output = pd.DataFrame(test_df['id'])
+output['is_iceberg'] = predictions
+output.to_csv('iceberg_submission.csv', index=False)
 
 print("Seconds:", (time.time() - start))
